@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -148,3 +149,24 @@ async def cancel(db: AsyncSession, order: Order) -> None:
         await inventory_service.release(db, config.id)
     order.status = OrderStatus.cancelled
     await db.flush()
+
+
+# Orders left awaiting payment longer than this are auto-expired (Celery).
+STALE_ORDER_TTL = timedelta(minutes=30)
+
+
+async def expire_stale_orders(db: AsyncSession) -> int:
+    """Expire abandoned awaiting-payment orders and release their inventory."""
+    cutoff = datetime.now(UTC) - STALE_ORDER_TTL
+    rows = await db.execute(
+        select(Order).where(
+            Order.status == OrderStatus.awaiting_payment, Order.created_at < cutoff
+        )
+    )
+    count = 0
+    for order in rows.scalars().all():
+        await cancel(db, order)
+        order.status = OrderStatus.expired
+        count += 1
+    await db.flush()
+    return count
