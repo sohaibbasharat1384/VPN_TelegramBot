@@ -10,9 +10,13 @@ from app.core.config import settings
 from app.models.catalog import Plan
 from app.models.enums import NotificationKind, SubscriptionStatus
 from app.models.order import Subscription
-from app.models.rbac import AdminUser
 from app.models.user import User
-from app.services import inventory_service, notification_service, settings_service
+from app.services import (
+    admin_service,
+    inventory_service,
+    notification_service,
+    settings_service,
+)
 from app.utils.formatting import gb, human_bytes, jalali
 from app.utils.telegram import send_message
 
@@ -103,13 +107,6 @@ async def scan_usage(db: AsyncSession) -> int:
     return sent
 
 
-async def _admin_chat_ids(db: AsyncSession) -> list[int]:
-    rows = await db.execute(select(AdminUser.telegram_id).where(AdminUser.telegram_id.isnot(None)))
-    ids = {r[0] for r in rows.all() if r[0]}
-    ids.update(settings.bootstrap_admin_ids)
-    return list(ids)
-
-
 async def check_low_inventory(db: AsyncSession) -> int:
     """Alert admins (once per day per plan) when a manual plan runs low."""
     threshold = await settings_service.get_int(
@@ -118,7 +115,7 @@ async def check_low_inventory(db: AsyncSession) -> int:
     today = date.today().isoformat()
     alerts = 0
     plans = (await db.execute(select(Plan).where(Plan.is_active.is_(True)))).scalars().all()
-    chat_ids = await _admin_chat_ids(db)
+    chat_ids = await admin_service.admin_chat_ids(db)
     for plan in plans:
         available = await inventory_service.available_count(db, plan.id)
         if available > threshold:
