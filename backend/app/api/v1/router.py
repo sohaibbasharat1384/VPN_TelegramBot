@@ -3,10 +3,19 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api.v1.routes import auth
+from app.api.v1.routes import (
+    auth,
+    cards,
+    coupons,
+    inventory,
+    payments,
+    plans,
+    settings,
+    stats,
+    tickets,
+    users,
+)
 
 api_router = APIRouter()
-api_router.include_router(auth.router)
-
-# More routers added in later increments:
-#   users, payments, plans, inventory, coupons, referrals, tickets, stats, ...
+for module in (auth, stats, users, plans, inventory, payments, coupons, tickets, cards, settings):
+    api_router.include_router(module.router)

@@ -38,11 +38,14 @@ dev = [
 ]
 
 [tool.ruff]
-line-length = 100
+line-length = 110
 target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "ASYNC"]
+# B008: FastAPI uses callables (Depends/Query) as argument defaults by design.
+# UP038: isinstance with a tuple is valid and faster than the X | Y form.
+ignore = ["B008", "UP038"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

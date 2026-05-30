@@ -57,7 +57,10 @@ async def _list_admins() -> None:
     async with session_scope() as db:
         admins = (await db.execute(select(AdminUser))).scalars().all()
         for a in admins:
-            print(f"#{a.id} {a.email or '(telegram)'} tg={a.telegram_id} role={a.role.name} active={a.is_active}")
+            print(
+                f"#{a.id} {a.email or '(telegram)'} tg={a.telegram_id} "
+                f"role={a.role.name} active={a.is_active}"
+            )
 
 
 def main() -> None:
