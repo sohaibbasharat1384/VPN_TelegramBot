@@ -1,0 +1,116 @@
+name: vpnrobot
+
+x-backend-env: &backend-env
+  env_file: [.env]
+
+x-backend-build: &backend-build
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [internal]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [internal]
+
+  api:
+    <<: [*backend-build, *backend-env]
+    restart: unless-stopped
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers"
+    volumes:
+      - media:/app/media
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    ports:
+      - "8000:8000"
+    networks: [internal]
+
+  customer_bot:
+    <<: [*backend-build, *backend-env]
+    restart: unless-stopped
+    command: ["python", "-m", "app.bot.customer.main"]
+    volumes:
+      - media:/app/media
+    depends_on:
+      api: {condition: service_started}
+    networks: [internal]
+
+  admin_bot:
+    <<: [*backend-build, *backend-env]
+    restart: unless-stopped
+    command: ["python", "-m", "app.bot.admin.main"]
+    volumes:
+      - media:/app/media
+    depends_on:
+      api: {condition: service_started}
+    networks: [internal]
+
+  worker:
+    <<: [*backend-build, *backend-env]
+    restart: unless-stopped
+    command: ["celery", "-A", "app.workers.celery_app", "worker", "-l", "info", "--concurrency=4"]
+    volumes:
+      - media:/app/media
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    networks: [internal]
+
+  beat:
+    <<: [*backend-build, *backend-env]
+    restart: unless-stopped
+    command: ["celery", "-A", "app.workers.celery_app", "beat", "-l", "info"]
+    depends_on:
+      redis: {condition: service_healthy}
+    networks: [internal]
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${API_BASE_URL}
+    depends_on:
+      api: {condition: service_started}
+    ports:
+      - "3000:3000"
+    networks: [internal]
+
+volumes:
+  postgres-data:
+  redis-data:
+  media:
+
+networks:
+  internal:
+    driver: bridge

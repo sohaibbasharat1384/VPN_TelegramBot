@@ -1,0 +1,55 @@
+[project]
+name = "vpnrobot-backend"
+version = "1.0.0"
+description = "VPN Robot — Telegram V2Ray sales platform backend"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.34.0",
+    "pydantic==2.10.4",
+    "pydantic-settings==2.7.1",
+    "sqlalchemy[asyncio]==2.0.36",
+    "asyncpg==0.30.0",
+    "alembic==1.14.0",
+    "psycopg2-binary==2.9.10",      # alembic offline / sync utilities
+    "redis==5.2.1",
+    "celery==5.4.0",
+    "aiogram==3.15.0",
+    "httpx==0.28.1",
+    "passlib[bcrypt]==1.7.4",
+    "pyjwt==2.10.1",
+    "python-multipart==0.0.20",
+    "qrcode[pil]==8.0",
+    "Pillow==11.0.0",
+    "cryptography==44.0.0",
+    "python-jose[cryptography]==3.3.0",
+    "tenacity==9.0.0",
+    "structlog==24.4.0",
+    "jdatetime==5.0.0",             # Persian (Jalali) calendar for the UI
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.4",
+    "pytest-asyncio==0.25.0",
+    "ruff==0.8.4",
+    "mypy==1.14.0",
+    "httpx==0.28.1",
+    "aiosqlite==0.20.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true
