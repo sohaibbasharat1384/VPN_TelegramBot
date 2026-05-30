@@ -8,7 +8,8 @@
       "Bash(npm install *)",
       "Bash(npx tsc *)",
       "Bash(node -p \"require\\('next/package.json'\\).version\")",
-      "Bash(NEXT_TELEMETRY_DISABLED=1 npm run build)"
+      "Bash(NEXT_TELEMETRY_DISABLED=1 npm run build)",
+      "Bash(git commit -q -m 'ci+docs: deployment guide, CI/CD, monitoring, backups, security, tests *)"
     ]
   }
 }

@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (lint + import + tests)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: vpnrobot
+          POSTGRES_USER: vpnrobot
+          POSTGRES_PASSWORD: vpnrobot
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U vpnrobot" --health-interval 10s
+          --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    env:
+      SECRET_KEY: ci-secret-key-which-is-long-enough-1234
+      JWT_REFRESH_SECRET_KEY: ci-refresh-key-which-is-long-enough-5678
+      DATABASE_URL: postgresql+asyncpg://vpnrobot:vpnrobot@localhost:5432/vpnrobot
+      REDIS_URL: redis://localhost:6379/0
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install .[dev]
+      - name: Ruff lint
+        run: ruff check app
+      - name: Import & app build check
+        run: python -c "import app.main, app.workers.celery_app, app.bot.customer.main, app.bot.admin.main; print('imports ok')"
+      - name: Alembic migrations
+        run: alembic upgrade head
+      - name: Tests
+        run: pytest -q
+
+  frontend:
+    name: Frontend (build + typecheck)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image
+        run: docker build -t vpnrobot-backend ./backend
+      - name: Build frontend image
+        run: docker build -t vpnrobot-frontend ./frontend
