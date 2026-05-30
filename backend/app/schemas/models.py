@@ -199,6 +199,25 @@ class CardCreate(APIModel):
     sort_order: int = 0
 
 
+# ---------- Panels ----------
+class PanelRead(ORMModel):
+    id: int
+    name: str
+    type: str
+    base_url: str
+    username: str
+    is_active: bool
+
+
+class PanelCreate(APIModel):
+    name: str
+    type: str  # marzban | xui
+    base_url: str
+    username: str
+    password: str
+    extra: dict = {}
+
+
 # ---------- Settings ----------
 class SettingUpdate(APIModel):
     key: str

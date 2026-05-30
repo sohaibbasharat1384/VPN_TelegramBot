@@ -8,6 +8,8 @@ from app.api.v1.routes import (
     cards,
     coupons,
     inventory,
+    panels,
+    payment_callback,
     payments,
     plans,
     settings,
@@ -17,5 +19,8 @@ from app.api.v1.routes import (
 )
 
 api_router = APIRouter()
-for module in (auth, stats, users, plans, inventory, payments, coupons, tickets, cards, settings):
+for module in (
+    auth, stats, users, plans, inventory, payments, payment_callback,
+    coupons, tickets, cards, panels, settings,
+):
     api_router.include_router(module.router)
