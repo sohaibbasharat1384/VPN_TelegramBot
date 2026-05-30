@@ -4,7 +4,11 @@
       "Bash(docker --version)",
       "Bash(git --version)",
       "Bash(git add *)",
-      "Bash(git commit -q -m 'chore: scaffold monorepo, docker compose, env template and architecture/database docs *)"
+      "Bash(git commit -q -m 'chore: scaffold monorepo, docker compose, env template and architecture/database docs *)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(node -p \"require\\('next/package.json'\\).version\")",
+      "Bash(NEXT_TELEMETRY_DISABLED=1 npm run build)"
     ]
   }
 }

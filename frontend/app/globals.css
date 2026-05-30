@@ -1,0 +1,42 @@
+@import url("https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 210 40% 98%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --muted: 210 40% 94%;
+  --muted-foreground: 215 16% 47%;
+  --border: 214 32% 88%;
+  --primary: 221 83% 53%;
+  --primary-foreground: 0 0% 100%;
+  --success: 142 71% 45%;
+  --danger: 0 72% 51%;
+  --warning: 38 92% 50%;
+}
+
+.dark {
+  --background: 222 47% 8%;
+  --foreground: 210 40% 96%;
+  --card: 222 40% 12%;
+  --muted: 217 33% 18%;
+  --muted-foreground: 215 20% 65%;
+  --border: 217 33% 22%;
+  --primary: 217 91% 60%;
+  --primary-foreground: 222 47% 11%;
+  --success: 142 69% 50%;
+  --danger: 0 72% 58%;
+  --warning: 38 92% 55%;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
