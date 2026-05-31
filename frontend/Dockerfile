@@ -1,14 +1,21 @@
 # ---- deps ----
 FROM node:22-alpine AS deps
 WORKDIR /app
+# Optional registry mirror — set NPM_REGISTRY in .env if npmjs.org is slow/blocked
+# from your server (e.g. https://registry.npmmirror.com).
+ARG NPM_REGISTRY=https://registry.npmjs.org/
+# Force IPv4 first: a broken/slow IPv6 path to the registry is the usual cause of
+# npm hanging for minutes then dying with "Exit handler never called". Plus generous
+# retries/timeouts for flaky links.
 ENV NPM_CONFIG_FUND=false \
     NPM_CONFIG_AUDIT=false \
-    NPM_CONFIG_UPDATE_NOTIFIER=false
+    NPM_CONFIG_UPDATE_NOTIFIER=false \
+    NODE_OPTIONS=--dns-result-order=ipv4first \
+    NPM_CONFIG_FETCH_RETRIES=5 \
+    NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=180000 \
+    NPM_CONFIG_FETCH_TIMEOUT=600000
 COPY package.json package-lock.json* ./
-# Lockfile is committed, so `npm ci` is deterministic. --maxsockets keeps network
-# and memory use low on small VPSes (the previous `|| npm install` fallback masked
-# failures and doubled build time under memory pressure).
-RUN npm ci --no-audit --no-fund --maxsockets 4
+RUN npm config set registry "$NPM_REGISTRY" && npm ci --no-audit --no-fund
 
 # ---- build ----
 FROM node:22-alpine AS build

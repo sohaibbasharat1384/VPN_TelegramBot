@@ -61,6 +61,20 @@ sudo VR_NONINTERACTIVE=1 \
   bash deploy/install.sh
 ```
 
+### Troubleshooting the build
+
+**`npm ci` hangs for minutes then fails with `npm error Exit handler never called!`**
+This is a network problem, not memory. Node tries IPv6 to the npm registry first;
+if the host's IPv6 path is broken it stalls. The frontend image already forces IPv4
+and adds retries. If your server still can't reach `registry.npmjs.org`, set a
+mirror in `.env` and rebuild:
+
+```bash
+echo 'NPM_REGISTRY=https://registry.npmmirror.com' >> .env
+docker compose build --no-cache frontend
+docker compose up -d
+```
+
 ## Quick start (development)
 
 ```bash
