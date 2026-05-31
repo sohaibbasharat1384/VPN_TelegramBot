@@ -38,6 +38,29 @@ through Telegram, with a full web admin dashboard.
 All business logic lives in `backend/app/services/` so the bots, the REST API,
 and the workers share one source of truth.
 
+## Quick install (Ubuntu VPS) ⚡
+
+One command provisions everything — Docker, secrets, `.env`, the full stack,
+migrations, optional Nginx + free SSL, nightly backups, and the first admin:
+
+```bash
+git clone https://github.com/sohaibbasharat1384/VPN_TelegramBot.git
+cd VPN_TelegramBot
+sudo bash deploy/install.sh
+```
+
+The installer interactively asks for your bot tokens, Telegram admin ID, and
+(optionally) a domain for HTTPS. For an **unattended** install, set the inputs as
+environment variables and run with `VR_NONINTERACTIVE=1`:
+
+```bash
+sudo VR_NONINTERACTIVE=1 \
+  VR_CUSTOMER_BOT_TOKEN=123:abc VR_ADMIN_BOT_TOKEN=456:def \
+  VR_SUPER_ADMINS=123456789 VR_DOMAIN=panel.example.com VR_LE_EMAIL=you@example.com \
+  VR_ADMIN_EMAIL=you@example.com VR_ADMIN_PASSWORD='strong-pass' \
+  bash deploy/install.sh
+```
+
 ## Quick start (development)
 
 ```bash
