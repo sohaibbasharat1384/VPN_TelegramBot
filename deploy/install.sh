@@ -174,8 +174,37 @@ fi
 yes | ufw enable >/dev/null 2>&1 || true
 ok "Firewall configured."
 
-# ---- 6. build & start -------------------------------------------------------
-log "Building images and starting the stack (this can take a few minutes)..."
+# ---- 6. ensure swap (prevents OOM-killed builds on small VPSes) -------------
+ensure_swap() {
+  local mem_mb swap_mb
+  mem_mb=$(awk '/MemTotal/{print int($2/1024)}' /proc/meminfo)
+  swap_mb=$(awk '/SwapTotal/{print int($2/1024)}' /proc/meminfo)
+  log "Detected ${mem_mb}MB RAM, ${swap_mb}MB swap."
+  # npm/pip builds need ~2GB headroom; add swap if RAM is small and swap is low.
+  if [ "$mem_mb" -lt 3000 ] && [ "$swap_mb" -lt 1500 ]; then
+    log "Low memory — creating a 2GB swap file to keep the build from being OOM-killed..."
+    if [ ! -f /swapfile ]; then
+      fallocate -l 2G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=2048 status=none
+      chmod 600 /swapfile
+      mkswap /swapfile >/dev/null
+    fi
+    swapon /swapfile 2>/dev/null || true
+    grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+    ok "Swap enabled ($(awk '/SwapTotal/{print int($2/1024)}' /proc/meminfo)MB total)."
+  fi
+}
+ensure_swap
+
+# ---- 7. build & start (sequential — avoids 6 parallel builds exhausting RAM) -
+# Build the memory-heavy frontend on its own first, then the backend image; the
+# remaining backend services (worker/beat/bots) reuse the cached layers and start
+# in seconds. This is far more reliable on small VPSes than `up -d --build`.
+export COMPOSE_BAKE=false
+log "Building frontend image (this can take several minutes on a small VPS)..."
+docker compose build frontend
+log "Building backend image..."
+docker compose build api
+log "Starting the full stack..."
 docker compose up -d --build
 ok "Containers started."
 
@@ -191,7 +220,7 @@ done
 log "Applying database migrations..."
 docker compose exec -T api alembic upgrade head && ok "Migrations applied."
 
-# ---- 7. optional Nginx + Let's Encrypt -------------------------------------
+# ---- 8. optional Nginx + Let's Encrypt -------------------------------------
 if [ -n "$DOMAIN" ]; then
   ask LE_EMAIL "Email for Let's Encrypt (blank = skip SSL)" ""
   log "Installing Nginx..."
@@ -213,7 +242,7 @@ if [ -n "$DOMAIN" ]; then
   fi
 fi
 
-# ---- 8. nightly backups -----------------------------------------------------
+# ---- 9. nightly backups -----------------------------------------------------
 if [ -f deploy/backup.sh ]; then
   chmod +x deploy/backup.sh
   cron_line="30 3 * * * cd $APP_DIR && bash deploy/backup.sh >> /var/log/vpnrobot-backup.log 2>&1"
@@ -221,7 +250,7 @@ if [ -f deploy/backup.sh ]; then
     && ok "Nightly backup cron installed (03:30)." || warn "Could not install backup cron."
 fi
 
-# ---- 9. first dashboard admin ----------------------------------------------
+# ---- 10. first dashboard admin ---------------------------------------------
 echo
 ask        ADMIN_EMAIL    "Create dashboard admin — email (blank = skip)" ""
 if [ -n "$ADMIN_EMAIL" ]; then
@@ -233,7 +262,7 @@ if [ -n "$ADMIN_EMAIL" ]; then
   fi
 fi
 
-# ---- 10. summary ------------------------------------------------------------
+# ---- 11. summary -----------------------------------------------------------
 echo
 ok "Installation complete!"
 echo "──────────────────────────────────────────────"

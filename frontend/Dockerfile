@@ -1,15 +1,22 @@
 # ---- deps ----
 FROM node:22-alpine AS deps
 WORKDIR /app
+ENV NPM_CONFIG_FUND=false \
+    NPM_CONFIG_AUDIT=false \
+    NPM_CONFIG_UPDATE_NOTIFIER=false
 COPY package.json package-lock.json* ./
-RUN npm ci || npm install
+# Lockfile is committed, so `npm ci` is deterministic. --maxsockets keeps network
+# and memory use low on small VPSes (the previous `|| npm install` fallback masked
+# failures and doubled build time under memory pressure).
+RUN npm ci --no-audit --no-fund --maxsockets 4
 
 # ---- build ----
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-ENV NEXT_TELEMETRY_DISABLED=1
+# Cap Node heap so the Next build stays within small-VPS memory (relies on swap).
+ENV NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS=--max-old-space-size=1024
 RUN npm run build
 
 # ---- runtime (standalone) ----
